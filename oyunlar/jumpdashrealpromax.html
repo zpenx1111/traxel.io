@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jump Dash - ULTRA TURBO! ⚡</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial Black', sans-serif;
+            background: linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #ff9ff3 100%);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: linear-gradient(180deg, #ff6b6b 0%, #ee5a52 30%, #fdcb6e 70%, #f39c12 100%);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ui {
+            position: absolute;
+            top: 25px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 3px 3px 8px rgba(0,0,0,0.8);
+        }
+
+        .speed-meter {
+            background: rgba(0,0,0,0.3);
+            padding: 8px 20px;
+            border-radius: 25px;
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(255,255,255,0.4);
+            font-size: 20px;
+        }
+
+        .coins {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .start-screen, .game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 200;
+            backdrop-filter: blur(15px);
+        }
+
+        .start-screen h1, .game-over h1 {
+            font-size: 56px;
+            margin-bottom: 25px;
+            background: linear-gradient(45deg, #feca57, #ff9ff3, #fd79a8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: glow 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 15px #feca57); }
+            to { filter: drop-shadow(0 0 30px #fd79a8); }
+        }
+
+        .btn {
+            padding: 22px 60px;
+            font-size: 28px;
+            background: linear-gradient(45deg, #feca57, #fd79a8);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 12px 35px rgba(254,202,87,0.6);
+            transition: all 0.3s;
+            font-weight: bold;
+            margin: 10px;
+        }
+
+        .btn:hover, .btn:active {
+            transform: translateY(-5px) scale(1.08);
+            box-shadow: 0 20px 45px rgba(254,202,87,0.8);
+        }
+
+        .score-display {
+            background: rgba(0,0,0,0.4);
+            padding: 12px 25px;
+            border-radius: 30px;
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255,255,255,0.5);
+        }
+
+        @media (max-width: 480px) {
+            .start-screen h1, .game-over h1 { font-size: 44px; }
+            .ui { font-size: 24px; flex-direction: column; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="ui">
+            <div class="score-display">🏃 <span id="distance">0</span>m</div>
+            <div class="speed-meter">⚡ <span id="speed">x1.0</span></div>
+            <div class="coins">🪙 <span id="coins">0</span></div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="start-screen" id="startScreen">
+            <h1>🚀 Jump Dash ULTRA TURBO!</h1>
+            <p style="font-size: 24px; margin-bottom: 40px; text-align: center; max-width: 450px;">
+                <strong>DOKUN</strong> / <strong>SPACE</strong> = Zıpla!
+            </p>
+            <button class="btn" onclick="startGame()">💥 ULTRA TURBO BAŞLAT!</button>
+        </div>
+
+        <div class="game-over" id="gameOverScreen" style="display: none;">
+            <h1>💥 ULTRA CRASH!</h1>
+            <div style="font-size: 40px; margin: 25px 0; font-weight: bold;">
+                <span id="finalDistance">0</span>m - <span id="finalCoins">0</span>🪙
+            </div>
+            <div class="medal" id="medal" style="font-size: 48px;">🥉</div>
+            <div class="score-display" style="font-size: 26px; margin: 20px 0;">
+                🌟 EN İYİ: <span id="highScore">0</span>m
+            </div>
+            <div style="display: flex; gap: 15px;">
+                <button class="btn" onclick="restartGame()">🔄 YENİDEN</button>
+                <button class="btn" style="background: linear-gradient(45deg, #00b894, #00cec9);" onclick="shareScore()">📱 PAYLAŞ</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // DOM elementleri
+        const distanceEl = document.getElementById('distance');
+        const speedEl = document.getElementById('speed');
+        const coinsEl = document.getElementById('coins');
+        const finalDistanceEl = document.getElementById('finalDistance');
+        const finalCoinsEl = document.getElementById('finalCoins');
+        const highScoreEl = document.getElementById('highScore');
+        const medalEl = document.getElementById('medal');
+
+        // Canvas resize
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Oyun durumu
+        let gameState = 'start';
+        let distance = 0;
+        let coins = 0;
+        let highScore = parseFloat(localStorage.getItem('jumpDashUltraHS')) || 0;
+        highScoreEl.textContent = Math.floor(highScore);
+
+        // Oyuncu
+        const player = {
+            x: 140,
+            y: 0,
+            vy: 0,
+            radius: 30,
+            grounded: false,
+            jumpPower: -24,
+            gravity: 1.1,
+            trail: []
+        };
+
+        // Dünya
+        let gameTime = 0;
+        let baseSpeed = 8;
+        let worldSpeed = baseSpeed;
+        let speedMultiplier = 1.0;
+        let groundY = 0;
+        let obstacles = [];
+        let coinItems = [];
+        let clouds = [];
+        let speedBoosts = [];
+        let particles = [];
+        let lastObstacleTime = 0;
+        let consecutiveObstacles = 0; // *** YENİ: Art arda blok sayacı ***
+
+        // Input
+        let jumpPressed = false;
+        let keys = {};
+
+        // Ses efektleri (aynı)
+        function playJumpSound() {
+            const audio = new AudioContext();
+            const oscillator = audio.createOscillator();
+            const gainNode = audio.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audio.destination);
+            oscillator.frequency.setValueAtTime(800, audio.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(400, audio.currentTime + 0.1);
+            gainNode.gain.setValueAtTime(0.3, audio.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audio.currentTime + 0.1);
+            oscillator.start(audio.currentTime);
+            oscillator.stop(audio.currentTime + 0.1);
+        }
+
+        function playCoinSound() {
+            const audio = new AudioContext();
+            const oscillator = audio.createOscillator();
+            const gainNode = audio.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audio.destination);
+            oscillator.frequency.setValueAtTime(1000, audio.currentTime);
+            oscillator.frequency.setValueAtTime(1200, audio.currentTime + 0.05);
+            oscillator.frequency.setValueAtTime(1500, audio.currentTime + 0.1);
+            gainNode.gain.setValueAtTime(0.2, audio.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audio.currentTime + 0.15);
+            oscillator.start(audio.currentTime);
+            oscillator.stop(audio.currentTime + 0.15);
+        }
+
+        function playBoostSound() {
+            const audio = new AudioContext();
+            const oscillator = audio.createOscillator();
+            const gainNode = audio.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audio.destination);
+            oscillator.frequency.setValueAtTime(200, audio.currentTime);
+            oscillator.frequency.linearRampToValueAtTime(800, audio.currentTime + 0.3);
+            gainNode.gain.setValueAtTime(0.3, audio.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.02, audio.currentTime + 0.3);
+            oscillator.start(audio.currentTime);
+            oscillator.stop(audio.currentTime + 0.3);
+        }
+
+        function playCrashSound() {
+            const audio = new AudioContext();
+            const oscillator = audio.createOscillator();
+            const gainNode = audio.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audio.destination);
+            oscillator.frequency.setValueAtTime(400, audio.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(100, audio.currentTime + 0.5);
+            gainNode.gain.setValueAtTime(0.4, audio.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audio.currentTime + 0.5);
+            oscillator.start(audio.currentTime);
+            oscillator.stop(audio.currentTime + 0.5);
+        }
+
+        // Eventler
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'Space' && gameState === 'playing') {
+                e.preventDefault();
+                jumpPressed = true;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+            if (e.code === 'Space') jumpPressed = false;
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (gameState === 'playing') {
+                e.preventDefault();
+                jumpPressed = true;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', () => {
+            jumpPressed = false;
+        });
+
+        // Global fonksiyonlar
+        window.startGame = function() {
+            gameState = 'playing';
+            gameTime = 0;
+            lastObstacleTime = 0;
+            consecutiveObstacles = 0;
+            resetGameStats();
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'none';
+            gameLoop();
+        }
+
+        window.restartGame = function() {
+            gameState = 'playing';
+            gameTime = 0;
+            lastObstacleTime = 0;
+            consecutiveObstacles = 0;
+            resetGameStats();
+            document.getElementById('gameOverScreen').style.display = 'none';
+            gameLoop();
+        }
+
+        function resetGameStats() {
+            distance = 0;
+            coins = 0;
+            gameTime = 0;
+            lastObstacleTime = 0;
+            consecutiveObstacles = 0;
+            baseSpeed = 8;
+            worldSpeed = baseSpeed;
+            speedMultiplier = 1.0;
+            obstacles = [];
+            coinItems = [];
+            clouds = [];
+            speedBoosts = [];
+            particles = [];
+            player.y = 0;
+            player.vy = 0;
+            player.grounded = false;
+            player.trail = [];
+        }
+
+        function gameLoop() {
+            if (gameState !== 'playing') return;
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function update() {
+            gameTime += 1/60;
+
+            // Zıplama
+            if (jumpPressed && player.grounded) {
+                player.vy = player.jumpPower;
+                player.grounded = false;
+                playJumpSound();
+                jumpPressed = false;
+                createParticles(player.x, player.y + player.radius, '#f39c12', 10);
+            }
+
+            // Fizik
+            player.vy += player.gravity;
+            player.y += player.vy;
+            if (player.y >= groundY - player.radius) {
+                player.y = groundY - player.radius;
+                player.vy = 0;
+                player.grounded = true;
+            }
+
+            // Trail
+            player.trail.push({x: player.x, y: player.y});
+            if (player.trail.length > 10) player.trail.shift();
+
+            // Yavaş hızlanma (aynı)
+            if (gameTime < 5) {
+                speedMultiplier = 0.6 + (gameTime / 5) * 0.4;
+            } else {
+                speedMultiplier = 1.0 + Math.floor((gameTime - 5) / 4) * 0.1;
+            }
+            if (speedMultiplier > 3.5) speedMultiplier = 3.5;
+            
+            worldSpeed = baseSpeed * speedMultiplier;
+            distance += worldSpeed * 0.12;
+            distanceEl.textContent = Math.floor(distance);
+            speedEl.textContent = `x${speedMultiplier.toFixed(1)}`;
+
+            groundY = canvas.height * 0.73;
+
+            spawnGameObjects();
+            updateObstacles();
+            updateCoins();
+            updateClouds();
+            updateSpeedBoosts();
+            updateParticles();
+            checkCollisions();
+        }
+
+        // *** GÜNCELLENMİŞ SPAWN - MAX 2 BLOK KURALI ***
+        function spawnGameObjects() {
+            // Ekranın sağında max 2 blok varsa ve yeterli mesafe varsa spawn et
+            const obstaclesOnScreen = obstacles.filter(obs => obs.x > -100).length;
+            
+            // Max 2 blok kuralı + zaman kontrolü
+            const obstacleInterval = Math.max(2 - gameTime * 0.005, 1.5);
+            
+            if (obstaclesOnScreen < 2 && 
+                gameTime - lastObstacleTime > obstacleInterval && 
+                consecutiveObstacles < 2) {  // *** MAX 2 ARKA ARKAYA ***
+                
+                spawnObstacle();
+                lastObstacleTime = gameTime;
+                consecutiveObstacles++;
+            } else if (obstaclesOnScreen === 0) {
+                // Boşluk çok uzunsa sıfırla
+                consecutiveObstacles = 0;
+            }
+            
+            if (Math.random() < 0.03) spawnCoin();
+            if (Math.random() < 0.008 && speedBoosts.length < 2) spawnSpeedBoost();
+            if (Math.random() < 0.01) spawnCloud();
+        }
+
+        function spawnObstacle() {
+            const types = [{w:45,h:60},{w:35,h:90},{w:60,h:40},{w:50,h:70}];
+            const type = types[Math.floor(Math.random()*types.length)];
+            obstacles.push({
+                x: canvas.width + 60,
+                y: groundY - type.h,
+                width: type.w,
+                height: type.h,
+                glow: 0
+            });
+        }
+
+        // Diğer spawn fonksiyonları aynı...
+        function spawnCoin() {
+            coinItems.push({
+                x: canvas.width + 60,
+                y: groundY - 130 - Math.random() * 180,
+                radius: 18,
+                rotation: 0,
+                bob: 0
+            });
+        }
+
+        function spawnSpeedBoost() {
+            speedBoosts.push({
+                x: canvas.width + 60,
+                y: groundY - 80,
+                width: 30,
+                height: 30,
+                pulse: 0
+            });
+        }
+
+        function spawnCloud() {
+            clouds.push({
+                x: canvas.width + 60,
+                y: 90 + Math.random() * 140,
+                size: 55 + Math.random() * 45,
+                speed: 2.2 + Math.random() * 1
+            });
+        }
+
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10 - 5,
+                    life: 1.0, maxLife: 40,
+                    color: color,
+                    size: Math.random() * 4 + 2
+                });
+            }
+        }
+
+        function updateObstacles() {
+            obstacles.forEach((obs, i) => {
+                obs.x -= worldSpeed;
+                obs.glow += 0.2;
+                if (obs.x + obs.width < 0) {
+                    obstacles.splice(i, 1);
+                    consecutiveObstacles = Math.max(0, consecutiveObstacles - 1); // Blok geçtiğinde sayacı azalt
+                }
+            });
+        }
+
+        function updateCoins() {
+            coinItems.forEach((coin, i) => {
+                coin.x -= worldSpeed;
+                coin.rotation += 0.3;
+                coin.bob += 0.15;
+                coin.y += Math.sin(coin.bob) * 1;
+                if (coin.x + coin.radius < 0) coinItems.splice(i, 1);
+            });
+        }
+
+        function updateSpeedBoosts() {
+            speedBoosts.forEach((boost, i) => {
+                boost.x -= worldSpeed;
+                boost.pulse += 0.2;
+                if (boost.x + boost.width < 0) speedBoosts.splice(i, 1);
+            });
+        }
+
+        function updateClouds() {
+            clouds.forEach((cloud, i) => {
+                cloud.x -= cloud.speed;
+                if (cloud.x + cloud.size < 0) clouds.splice(i, 1);
+            });
+        }
+
+        function updateParticles() {
+            particles.forEach((p, i) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.3;
+                p.life--;
+                if (p.life <= 0) particles.splice(i, 1);
+            });
+        }
+
+        function checkCollisions() {
+            for (let obs of obstacles) {
+                if (player.x + player.radius > obs.x &&
+                    player.x - player.radius < obs.x + obs.width &&
+                    player.y + player.radius > obs.y) {
+                    playCrashSound();
+                    createParticles(player.x, player.y, '#e74c3c', 30);
+                    gameOver();
+                    return;
+                }
+            }
+
+            for (let i = 0; i < coinItems.length; i++) {
+                let coin = coinItems[i];
+                const dx = player.x - coin.x, dy = player.y - coin.y;
+                if (Math.sqrt(dx * dx + dy * dy) < player.radius + coin.radius) {
+                    coins++;
+                    coinsEl.textContent = coins;
+                    coinItems.splice(i, 1);
+                    playCoinSound();
+                    createParticles(coin.x, coin.y, '#f1c40f', 15);
+                    break;
+                }
+            }
+
+            for (let i = 0; i < speedBoosts.length; i++) {
+                let boost = speedBoosts[i];
+                if (player.x + player.radius > boost.x &&
+                    player.x - player.radius < boost.x + boost.width &&
+                    player.y + player.radius > boost.y - boost.height &&
+                    player.y - player.radius < boost.y) {
+                    baseSpeed *= 1.4;
+                    speedBoosts.splice(i, 1);
+                    playBoostSound();
+                    createParticles(boost.x + boost.width / 2, boost.y, '#00cec9', 25);
+                    break;
+                }
+            }
+        }
+
+        // Draw fonksiyonu aynı (kısaltıldı)
+        function draw() {
+            const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            bgGradient.addColorStop(0, '#ff6b6b');
+            bgGradient.addColorStop(0.3 + speedMultiplier * 0.08, '#ee5a52');
+            bgGradient.addColorStop(0.7, '#fdcb6e');
+            bgGradient.addColorStop(1, '#f39c12');
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            clouds.forEach(cloud => {
+                ctx.save();
+                ctx.translate(cloud.x, cloud.y);
+                ctx.beginPath();
+                ctx.arc(0, 0, cloud.size, 0, Math.PI * 2);
+                ctx.arc(cloud.size / 3, 0, cloud.size / 1.4, 0, Math.PI * 2);
+                ctx.arc(-cloud.size / 3, 0, cloud.size / 1.4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            ctx.strokeStyle = `rgba(255,255,255,${0.3 + speedMultiplier * 0.1})`;
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 12; i++) {
+                const x = (distance * 120 + i * 120) % canvas.width;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#2d3436';
+            ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+            
+            ctx.strokeStyle = '#636e72';
+            ctx.lineWidth = 8;
+            ctx.setLineDash([30, 30]);
+            ctx.lineDashOffset = -(distance * 5) % 60;
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(canvas.width, groundY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 25;
+            obstacles.forEach(obs => {
+                ctx.shadowColor = `hsl(${200 + obs.glow * 10}, 100%, 50%)`;
+                ctx.fillStyle = '#2d3436';
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            });
+            ctx.shadowBlur = 0;
+
+            coinItems.forEach(coin => {
+                ctx.save();
+                ctx.translate(coin.x, coin.y);
+                ctx.rotate(coin.rotation);
+                ctx.shadowColor = '#ffd700';
+                ctx.shadowBlur = 30;
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
+                ctx.arc(0, 0, coin.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#ffed4a';
+                ctx.beginPath();
+                ctx.arc(-7, -7, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            speedBoosts.forEach(boost => {
+                ctx.save();
+                ctx.translate(boost.x + boost.width / 2, boost.y);
+                ctx.scale(1 + Math.sin(boost.pulse) * 0.2, 1 + Math.cos(boost.pulse) * 0.2);
+                ctx.shadowColor = '#00cec9';
+                ctx.shadowBlur = 35;
+                ctx.fillStyle = '#00cec9';
+                ctx.fillRect(-boost.width / 2, -boost.height / 2, boost.width, boost.height);
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#55a3ff';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(-boost.width / 2, -boost.height / 2, boost.width, boost.height);
+                ctx.restore();
+            });
+
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.life / p.maxLife;
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 15;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+            ctx.globalAlpha = 1;
+
+            player.trail.forEach((point, i) => {
+                ctx.save();
+                ctx.globalAlpha = i / player.trail.length * 0.6;
+                ctx.shadowColor = speedMultiplier > 2 ? '#f39c12' : '#e17055';
+                ctx.shadowBlur = 20;
+                ctx.fillStyle = speedMultiplier > 2 ? 'rgba(243, 156, 18, 0.8)' : 'rgba(225, 112, 85, 0.8)';
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, player.radius * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.beginPath();
+            ctx.ellipse(0, 15, player.radius, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowColor = speedMultiplier > 2 ? '#f39c12' : '#e17055';
+            ctx.shadowBlur = 35;
+            const bodyGradient = ctx.createRadialGradient(0, -10, 0, 0, 0, player.radius);
+            bodyGradient.addColorStop(0, 'rgba(255,255,255,0.9)');
+            bodyGradient.addColorStop(1, speedMultiplier > 2 ? '#f39c12' : '#e17055');
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.roundRect(-player.radius + 6, -player.radius + 12, player.radius * 2 - 12, player.radius * 2 - 12, 18);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(-12, -18, 9, 0, Math.PI * 2);
+            ctx.arc(12, -18, 9, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#2d3436';
+            ctx.beginPath();
+            ctx.arc(-10, -17, 5, 0, Math.PI * 2);
+            ctx.arc(10, -17, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = player.grounded ? '#2d3436' : '#e17055';
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(0, -4, 12, 0.1, Math.PI - 0.1);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function gameOver() {
+            gameState = 'gameover';
+            finalDistanceEl.textContent = Math.floor(distance);
+            finalCoinsEl.textContent = coins;
+            
+            if (distance > highScore) {
+                highScore = distance;
+                highScoreEl.textContent = Math.floor(highScore);
+                localStorage.setItem('jumpDashUltraHS', highScore);
+                medalEl.textContent = '🏆';
+                medalEl.style.fontSize = '64px';
+            } else if (distance > highScore * 0.75) {
+                medalEl.textContent = '🥇';
+            } else if (distance > highScore * 0.5) {
+                medalEl.textContent = '🥈';
+            } else {
+                medalEl.textContent = '🥉';
+            }
+            
+            document.getElementById('gameOverScreen').style.display = 'flex';
+        }
+
+        window.shareScore = function() {
+            const scoreText = `🚀 Jump Dash Ultra Turbo!\n🏆 Rekorum: ${Math.floor(highScore)}m - ${coins}🪙\nHadi sen de dene! ⚡`;
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Jump Dash Ultra Turbo!',
+                    text: scoreText,
+                    url: window.location.href
+                });
+            } else {
+                navigator.clipboard.writeText(scoreText).then(() => {
+                    alert('✅ Skorun kopyalandı! Arkadaşlarına gönder! 🚀');
+                }).catch(() => {
+                    alert(scoreText);
+                });
+            }
+        }
+    </script>
+</body>
+</html>
