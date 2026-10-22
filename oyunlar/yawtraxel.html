@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Arena 3D – Online Savaş</title>
+<style>
+:root{--bg:#0b0f14;--fg:#fff;--ac:#ff4d4d;--pn:rgba(10,14,20,.78);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root{--bg:#0b0f14}}
+:root[data-theme="dark"]{--bg:#0b0f14}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
+.hud{position:fixed;pointer-events:none}
+#feed{top:calc(env(safe-area-inset-top,0px) + 8px);right:8px;text-align:right;font-size:12px}
+#feed div{background:var(--pn);padding:2px 6px;margin-bottom:2px;border-radius:4px}
+#cross{top:50%;left:50%;width:18px;height:18px;margin:-9px;border:2px solid #fff8;border-radius:50%}
+#cross.zm{width:56vmin;height:56vmin;margin:-28vmin;border:none;border-radius:0;z-index:2;background:linear-gradient(#000,#000) center/100% 1px no-repeat,linear-gradient(#000,#000) center/1px 100% no-repeat,radial-gradient(circle,#f33 0 2px,transparent 3px)}
+#hm{top:50%;left:50%;margin:-14px;font-size:28px;color:#f33;opacity:0;transition:opacity .15s}
+#fl{inset:0;background:radial-gradient(transparent 40%,#f00);opacity:0;transition:opacity .3s}
+#scope{inset:0;background:radial-gradient(circle,transparent 28%,#000 29%);display:none}
+#st{left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 10px);background:var(--pn);padding:8px 10px;border-radius:8px;min-width:130px}
+#bar{height:10px;background:#333;border-radius:5px;overflow:hidden;margin:4px 0}#bar i{display:block;height:100%;background:#3c6;width:100%}
+#wb{z-index:6;left:8px;top:60px;display:flex;flex-direction:column;gap:3px;pointer-events:auto}
+#wb button{padding:5px 8px;font-size:11px;text-align:left}
+button,.btn{font:inherit;color:var(--fg);background:var(--pn);border:1px solid #fff4;border-radius:8px;padding:8px 10px;text-decoration:none;cursor:pointer;display:inline-block;text-align:center}
+button.on{background:var(--ac)}
+#tc{display:none}
+.tb{position:fixed;width:64px;height:64px;border-radius:50%;background:#fff3;border:2px solid #fff6;display:flex;align-items:center;justify-content:center;font-size:12px;z-index:5}
+#jl{position:fixed;left:0;bottom:0;width:50%;height:55%;z-index:4}#jr{position:fixed;right:0;top:0;width:50%;height:100%;z-index:3}
+#jb{position:fixed;left:24px;bottom:calc(env(safe-area-inset-bottom,0px) + 30px);width:120px;height:120px;border-radius:50%;background:#fff2;border:2px solid #fff6;z-index:5;pointer-events:none}
+#jk{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:#fff8}
+#menu{position:fixed;inset:0;background:rgba(5,8,12,.93);z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;text-align:center;overflow:auto;touch-action:auto}
+#menu h1{margin:0;font-size:28px;color:var(--ac)}
+#menu input{font:inherit;padding:10px;border-radius:8px;border:1px solid #fff5;background:#111;color:#fff;text-align:center;width:200px}
+.wc{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.go{background:var(--ac);font-size:18px;padding:12px 32px}
+#sb{display:none;top:env(safe-area-inset-top,0px);left:50%;transform:translateX(-50%);padding:6px 0 0;gap:8px}body.pl #sb{display:flex}
+#sb div{min-width:72px;padding:6px 16px;border-radius:10px;font-size:26px;font-weight:800;text-align:center;color:#fff}
+body:not(.pl) .hud,body:not(.pl) #tc{display:none!important}
+#lc{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;z-index:9;background:var(--pn);padding:10px 14px;border-radius:12px;text-align:center}
+#lc small{display:block;opacity:.7;font-size:11px}#lc b{font-size:22px;letter-spacing:3px}
+#lb{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);z-index:9;display:flex;flex-direction:column;align-items:center;gap:8px;text-shadow:0 1px 3px #000}
+</style></head><body>
+<div id="menu">
+ <h1>🎯 ARENA 3D</h1><div style="opacity:.8">Online savaş · kodla katıl</div>
+ <input id="nm" maxlength="12" placeholder="Takma adın">
+ <button class="go" id="mk">👥 Grup Kur</button>
+ <div class="wc"><input id="gc" maxlength="10" placeholder="Grup kodu" style="width:140px"><button id="jn" style="width:130px">Grup Kodu Gir</button></div>
+ <div id="er" style="font-size:12px;color:#f66"></div>
+ <div style="font-size:12px;opacity:.8">Silahlar maça girince seçilir · 🔪 Bıçak herkese otomatik verilir</div>
+ <div style="font-size:11px;opacity:.6">PC: WASD, fare, sol tık ateş, sağ tık yakınlaştır, R şarjör, 1-7 silah, F bıçak, Space zıpla</div>
+</div>
+<div class="hud" id="sb"></div><div class="hud" id="feed"></div>
+<div class="hud" id="cross"></div><div class="hud" id="hm">✖</div><div class="hud" id="fl"></div><div class="hud" id="scope"></div>
+<div class="hud" id="st"><div id="hp">❤ 100</div><div id="bar"><i></i></div><div id="am"></div></div>
+<div class="hud" id="wb"><button data-w="ak">1 AK-47</button><button data-w="m4">2 M4</button><button data-w="smg">3 SMG</button><button data-w="sg">4 Pompalı</button><button data-w="sn">5 Keskin</button><button data-w="gl">6 Glock</button><button data-w="de">7 Deagle</button></div>
+<div id="tc"><div id="jl"></div><div id="jr"></div><div id="jb"><div id="jk"></div></div>
+ <div class="tb" id="bf" style="right:20px;bottom:90px;width:80px;height:80px;background:#f443">ATEŞ</div>
+ <div class="tb" id="bj" style="right:110px;bottom:40px">ZIPLA</div>
+ <div class="tb" id="bz" style="right:20px;bottom:10px;height:60px">ZOOM</div>
+ <div class="tb" id="br" style="right:110px;bottom:115px;width:54px;height:54px">R</div>
+ <div class="tb" id="bk" style="right:20px;bottom:185px;width:54px;height:54px">🔪</div></div>
+<div id="lobby" style="display:none"><div id="lc"><small>Lobi kodu</small><b id="cv"></b></div><div id="lb"><div id="cn"></div><div class="wc"><button id="wa" style="background:#25d366;color:#000;width:auto">📲 WhatsApp'ta davet et</button><button id="sh" style="width:auto">🔗 Paylaş / Kopyala</button></div><button class="go" id="sg">MAÇA BAŞLA</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const clean=v=>(v||"").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,10);
+let lob=false,myTeam="",isHost=false,tk={red:0,blue:0},selfAv=null,GC="genel";
+// ---- silahlar (parçalar: b=kutu [w,h,l,x,y,z,renk,rotX], c=silindir [r,uzunluk,x,y,z,renk])
+const K=0x1c1c1c,M=0x4a4e53,D=0x7a4a22,S=0xb8bcc2,G=0x2a3a2a;
+const W={
+ ak:{n:"AK-47",dmg:22,rt:105,mag:30,spr:.022,rl:1700,zf:55,sn:[.16,2600,.9],h:[.2,-.3],mz:-.72,p:[["b",.06,.1,.45,0,0,0,M],["c",.016,.5,0,.02,-.45,K],["b",.07,.06,.3,0,-.01,-.32,D],["b",.06,.03,.3,0,.05,-.32,D],["c",.012,.3,0,.045,-.3,M],["b",.01,.05,.01,0,.06,-.68,K],["b",.05,.22,.08,0,-.16,-.06,K,.35],["b",.045,.12,.06,0,-.1,.2,K,-.3],["b",.055,.12,.28,0,-.03,.38,D,.15]]},
+ m4:{n:"M4",dmg:18,rt:85,mag:30,spr:.016,rl:1600,zf:55,sn:[.13,2800,.8],h:[.2,-.32],mz:-.74,p:[["b",.055,.1,.4,0,0,0,K],["b",.045,.03,.35,0,.07,-.02,K],["b",.02,.05,.04,0,.1,.05,K],["c",.03,.35,0,-.005,-.35,K],["c",.012,.25,0,.01,-.6,M],["b",.045,.2,.07,0,-.15,-.03,K,.1],["b",.045,.12,.06,0,-.1,.18,K,-.3],["b",.045,.1,.25,0,-.03,.33,K]]},
+ smg:{n:"SMG",dmg:13,rt:60,mag:40,spr:.03,rl:1500,zf:60,sn:[.1,3400,.6],h:[.15,-.2],mz:-.45,p:[["b",.06,.1,.32,0,0,0,K],["c",.015,.2,0,.02,-.3,M],["b",.065,.07,.15,0,-.02,-.2,K],["b",.035,.25,.05,0,-.17,-.02,M],["b",.04,.11,.06,0,-.1,.12,K,-.25],["b",.03,.06,.2,0,0,.28,M]]},
+ sg:{n:"Pompalı",dmg:11,pl:8,rt:900,mag:6,spr:.07,rl:2400,zf:60,sn:[.35,1800,1.6],h:[.15,-.38],mz:-.78,p:[["b",.06,.1,.3,0,0,0,M],["c",.02,.6,0,.03,-.45,K],["c",.016,.5,0,-.015,-.4,K],["b",.07,.06,.16,0,-.02,-.36,D],["b",.06,.13,.32,0,-.03,.34,D,.12]]},
+ sn:{n:"Keskin",dmg:90,rt:1300,mag:5,spr:.03,rl:2200,zf:14,sn:[.55,2200,1.8],h:[.2,-.35],mz:-.98,p:[["b",.055,.09,.45,0,0,0,G],["c",.014,.7,0,.02,-.6,K],["b",.06,.13,.4,0,-.02,.4,G,.1],["c",.032,.28,0,.1,-.05,K],["c",.036,.03,0,.1,-.2,0x335577],["b",.02,.04,.02,0,.07,-.1,K],["b",.04,.08,.06,0,-.07,.02,K],["b",.03,.02,.02,.05,.02,.12,S]]},
+ gl:{n:"Glock",dmg:16,rt:230,mag:15,spr:.015,rl:1200,zf:60,sn:[.1,3000,.7],h:[.07,.02],mz:-.12,p:[["b",.035,.05,.22,0,.02,0,K],["b",.033,.03,.2,0,-.015,0,M],["b",.035,.12,.06,0,-.08,.07,K,-.2]]},
+ de:{n:"Deagle",dmg:45,rt:520,mag:7,spr:.012,rl:1700,zf:60,sn:[.22,2000,1.3],h:[.1,.04],mz:-.27,p:[["b",.05,.07,.3,0,.02,0,S],["b",.045,.04,.28,0,-.03,0,K],["b",.04,.13,.07,0,-.09,.1,K,-.2],["c",.02,.1,0,.02,-.2,S]]}};
+const ORD=["ak","m4","smg","sg","sn","gl","de"];
+let cur="ak",hp=100,alive=false,playing=false,k=0,d=0,zoom=false,firing=false,reloading=false,nextShot=0,nextKnife=0,kn=0,rec=0,bob=0;
+const ammo={},res={};const me={id:Math.random().toString(36).slice(2,9),name:"Oyuncu"};
+function fillAll(){for(const w in W){ammo[w]=W[w].mag;res[w]=W[w].mag*3}}fillAll();
+
+// ---- ses (WebAudio)
+let AC=null,NB=null;
+function audio(){if(AC){if(AC.state=="suspended")AC.resume();return}try{AC=new(window.AudioContext||window.webkitAudioContext)();NB=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const a=NB.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1}catch(e){AC=null}}
+function nzs(dur,f0,f1,g,type,t=0){if(!AC)return;const s=AC.createBufferSource();s.buffer=NB;s.loop=true;const f=AC.createBiquadFilter();f.type=type;const n=AC.currentTime+t;f.frequency.setValueAtTime(f0,n);f.frequency.exponentialRampToValueAtTime(Math.max(40,f1),n+dur);const v=AC.createGain();v.gain.setValueAtTime(g,n);v.gain.exponentialRampToValueAtTime(.001,n+dur);s.connect(f);f.connect(v);v.connect(AC.destination);s.start(n,Math.random());s.stop(n+dur+.05)}
+function tn(f0,f1,dur,g,t=0){if(!AC)return;const o=AC.createOscillator(),v=AC.createGain(),n=AC.currentTime+t;o.frequency.setValueAtTime(f0,n);o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),n+dur);v.gain.setValueAtTime(g,n);v.gain.exponentialRampToValueAtTime(.001,n+dur);o.connect(v);v.connect(AC.destination);o.start(n);o.stop(n+dur+.05)}
+function sfx(w,vol=1){if(!AC||vol<.03)return;const c=W[w].sn;nzs(c[0],c[1],200,.8*vol,"lowpass");tn(160,40,c[0]*1.2,c[2]*.7*vol);nzs(.03,7000,2500,.4*vol,"highpass")}
+const click=(t=0,g=.3)=>nzs(.05,3500,1500,g,"bandpass",t);
+function sfxReload(ms){click(0,.35);click(ms/2000,.3);click(ms/1000-.1,.45)}
+function sfxKnife(){nzs(.22,500,3000,.5,"bandpass")}
+function sfxHit(){tn(1500,900,.07,.25)}
+
+// ---- sahne
+function tx(w,h,fn){const c=document.createElement("canvas");c.width=w;c.height=h;fn(c.getContext("2d"));const t=new THREE.CanvasTexture(c);t.magFilter=t.minFilter=THREE.NearestFilter;t.wrapS=t.wrapT=THREE.RepeatWrapping;return t}
+function nz(x,w,h,b,v){for(let i=0;i<w;i++)for(let j=0;j<h;j++){const r=(Math.random()-.5)*v;x.fillStyle=`rgb(${b[0]+r|0},${b[1]+r|0},${b[2]+r|0})`;x.fillRect(i,j,1,1)}}
+const R=new THREE.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(devicePixelRatio,2));R.shadowMap.enabled=true;document.body.prepend(R.domElement);
+const scene=new THREE.Scene();scene.fog=new THREE.Fog(0xcfe0ee,45,190);
+const cam=new THREE.PerspectiveCamera(75,1,.05,600);scene.add(cam);
+scene.add(new THREE.HemisphereLight(0xcfe6ff,0x4a5a30,.85));
+const sun=new THREE.DirectionalLight(0xfff2d0,.85);sun.position.set(30,50,20);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+const shc=sun.shadow.camera;shc.left=shc.bottom=-60;shc.right=shc.top=60;shc.far=200;scene.add(sun,sun.target);
+{const g=new THREE.SphereGeometry(350,16,12),cl=[],ps=g.attributes.position;for(let i=0;i<ps.count;i++){const t=Math.max(0,ps.getY(i)/350),c=new THREE.Color(0xdcebf7).lerp(new THREE.Color(0x3d7bd0),Math.pow(t,.55));cl.push(c.r,c.g,c.b)}
+ g.setAttribute("color",new THREE.Float32BufferAttribute(cl,3));scene.add(new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide,fog:false})))}
+const grass=tx(16,16,x=>{nz(x,16,16,[84,140,52],40);x.fillStyle="#3f7a2c";for(let i=0;i<14;i++)x.fillRect(Math.random()*16|0,Math.random()*16|0,1,2)});grass.repeat.set(150,150);
+const gr=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshLambertMaterial({map:grass}));gr.rotation.x=-Math.PI/2;gr.receiveShadow=true;scene.add(gr);
+const dirt=tx(16,16,x=>nz(x,16,16,[135,105,70],30));
+[[150,6],[6,150]].forEach(a=>{const t=dirt.clone();t.needsUpdate=true;t.repeat.set(a[0]/3,a[1]/3);const m=new THREE.Mesh(new THREE.PlaneGeometry(a[0],a[1]),new THREE.MeshLambertMaterial({map:t}));m.rotation.x=-Math.PI/2;m.position.y=.02;m.receiveShadow=true;scene.add(m)});
+const T={wood:tx(16,16,x=>{nz(x,16,16,[150,105,55],30);x.fillStyle="#5a3a18";for(let i=0;i<16;i+=5)x.fillRect(0,i,16,1);x.fillRect(0,0,1,16);x.fillRect(15,0,1,16)}),
+ brick:tx(32,16,x=>{nz(x,32,16,[160,75,60],26);x.fillStyle="#c9c0b0";for(let j=0;j<16;j+=4){x.fillRect(0,j,32,1);for(let i=(j/4%2)*4;i<32;i+=8)x.fillRect(i,j,1,4)}}),
+ conc:tx(16,16,x=>{nz(x,16,16,[130,132,136],24);x.fillStyle="#6a6c70";x.fillRect(0,0,16,1);x.fillRect(0,0,1,16)}),
+ bark:tx(8,8,x=>nz(x,8,8,[100,70,40],36)),leaf:tx(8,8,x=>nz(x,8,8,[50,125,40],70)),hill:tx(8,8,x=>nz(x,8,8,[70,120,60],30))};
+const walls=[],boxes=[],HALF=70;
+function addBox(x,z,w,d,h,type,col=true){const t=T[type].clone();t.needsUpdate=true;t.repeat.set(Math.max(1,w/2|0),Math.max(1,h/2|0));
+ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshLambertMaterial({map:t}));m.position.set(x,h/2,z);m.castShadow=m.receiveShadow=true;scene.add(m);
+ if(col){walls.push(m);boxes.push({x,z,hw:w/2,hd:d/2})}return m}
+addBox(0,-HALF-1,2*HALF+4,1,7,"brick");addBox(0,HALF+1,2*HALF+4,1,7,"brick");addBox(-HALF-1,0,1,2*HALF+4,7,"brick");addBox(HALF+1,0,1,2*HALF+4,7,"brick");
+let s=7;const rnd=()=>(s=(s*16807)%2147483647)/2147483647;
+const far=(x,z,r)=>Math.abs(x)<r&&Math.abs(z)<r;
+for(let i=0;i<6;i++){const x=(rnd()-.5)*110,z=(rnd()-.5)*110;if(far(x,z,10))continue;addBox(x,z,7+rnd()*5,7+rnd()*5,5,i%2?"brick":"conc")}
+for(let i=0;i<40;i++){const x=(rnd()-.5)*132,z=(rnd()-.5)*132;if(far(x,z,5))continue;addBox(x,z,2+rnd()*3,2+rnd()*3,2+rnd()*3,i%3?"wood":"conc")}
+for(let i=0;i<34;i++){const x=(rnd()-.5)*134,z=(rnd()-.5)*134;if(far(x,z,6))continue;
+ addBox(x,z,1,1,4,"bark");addBox(x,z,4,4,3.2,"leaf",false).position.y=5;addBox(x,z,2.6,2.6,2.4,"leaf",false).position.y=7.1}
+for(let i=0;i<12;i++){const a=i/12*6.283,r=135+rnd()*35,h=12+rnd()*18;addBox(Math.cos(a)*r,Math.sin(a)*r,34,34,h,"hill",false)}
+const hit=(x,z)=>boxes.some(b=>Math.abs(x-b.x)<b.hw+.5&&Math.abs(z-b.z)<b.hd+.5)||Math.abs(x)>HALF-1||Math.abs(z)>HALF-1;
+const picks=[];[[-30,-30],[30,30],[-30,30],[30,-30],[0,50],[0,-50],[50,0],[-50,0],[-55,-10],[55,10],[10,-55],[-10,55]].forEach((p,i)=>{
+ const t=i%2?"ammo":"hp";const m=new THREE.Mesh(new THREE.BoxGeometry(.8,.8,.8),new THREE.MeshLambertMaterial({color:t=="hp"?0x22cc55:0xffcc22,emissive:t=="hp"?0x115522:0x554411}));
+ m.position.set(p[0],.7,p[1]);scene.add(m);picks.push({m,t,on:true,at:0})});
+
+// ---- silah modelleri (kamera)
+const MAT={},mat=c=>MAT[c]||(MAT[c]=new THREE.MeshLambertMaterial({color:c}));
+function build(parts){const g=new THREE.Group();parts.forEach(p=>{let m;if(p[0]=="b"){m=new THREE.Mesh(new THREE.BoxGeometry(p[1],p[2],p[3]),mat(p[7]));m.position.set(p[4],p[5],p[6]);if(p[8])m.rotation.x=p[8]}
+ else{m=new THREE.Mesh(new THREE.CylinderGeometry(p[1],p[1],p[2],10),mat(p[6]));m.rotation.x=Math.PI/2;m.position.set(p[3],p[4],p[5])}g.add(m)});return g}
+const SK=0xe0ac8c,SL=0x3a4a2a;
+const hands=(zr,zl)=>[["b",.055,.06,.08,0,-.09,zr,SK],["b",.07,.07,.5,.03,-.15,zr+.3,SL,.2],["b",.055,.06,.09,0,-.06,zl,SK],["b",.07,.07,.5,-.13,-.17,zl+.3,SL,.35]];
+const gunRoot=new THREE.Group();cam.add(gunRoot);let gunMesh=null;
+const flash=new THREE.Mesh(new THREE.SphereGeometry(.05,8,6),new THREE.MeshBasicMaterial({color:0xffdd77}));flash.visible=false;
+const kRoot=build([["b",.012,.045,.22,0,0,-.15,S],["b",.014,.03,.02,0,0,-.03,K],["b",.028,.034,.11,0,0,.04,K],["b",.055,.06,.08,0,-.01,.05,SK],["b",.07,.07,.5,.02,-.06,.3,SL,.2]]);kRoot.position.set(.2,-.2,-.35);kRoot.visible=false;cam.add(kRoot);
+function setW(w){if(!W[w])return;cur=w;reloading=false;const c=W[w];
+ if(gunMesh)gunRoot.remove(gunMesh);gunMesh=build(c.p.concat(hands(c.h[0],c.h[1])));flash.position.set(0,.02,c.mz);gunMesh.add(flash);gunRoot.add(gunMesh);
+ document.querySelectorAll("[data-w]").forEach(b=>b.classList.toggle("on",b.dataset.w==w));setZoom(false);hud()}
+function vis(){gunRoot.visible=!(zoom&&cur=="sn")&&kn==0}
+function setZoom(z){zoom=z;cam.fov=z?W[cur].zf:75;cam.updateProjectionMatrix();$("scope").style.display=z&&cur=="sn"?"block":"none";$("cross").style.display="block";$("cross").classList.toggle("zm",!!z&&cur=="sn");vis()}
+
+// ---- ağ (PeerJS, GitHub Pages dahil her yerde çalışır)
+let room=null;const P={};let lastPres=0;
+function loadPeer(){return new Promise((ok,no)=>{if(window.Peer)return ok();const u=["https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js","https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js","https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"];let i=0;(function n(){if(i>=u.length)return no({type:"lib"});const s=document.createElement("script");s.src=u[i++];s.onload=()=>window.Peer?ok():n();s.onerror=n;document.head.appendChild(s)})()})}
+// PeerJS tabanlı oda: kurucu = sunucu (yıldız ağ), herkes ona bağlanır, o herkese dağıtır
+function makeRoom(code,host){return new Promise((resolve,reject)=>{
+ try{window.__peer&&window.__peer.destroy()}catch(e){}
+ const hid="a3d-"+code.toLowerCase().replace(/[^a-z0-9]/g,"");
+ const H={},pr={},ts={},conns={};let peerCb=null,hostConn=null,done=false;
+ const fire=(ev,d)=>{(H[ev]||[]).forEach(f=>{try{f({data:d,isMe:false})}catch(e){}})};
+ const notify=()=>{if(!peerCb)return;const peers=[];for(const id in pr)if(id!==me.id)peers.push({isMe:false,presence:pr[id]});peerCb({peers})};
+ const drop=id=>{if(pr[id]){delete pr[id];delete ts[id];notify()}};
+ const handle=(m,from)=>{if(!m)return;
+  if(m.k==="p"&&m.id&&m.d){if(from)from.pid=m.id;pr[m.id]=m.d;ts[m.id]=Date.now();notify()}
+  else if(m.k==="e")fire(m.ev,m.d);
+  else if(m.k==="l")drop(m.id);
+  if(host)for(const id in conns)if(conns[id]!==from&&conns[id].open)try{conns[id].send(m)}catch(e){}};
+ const send=m=>{if(host){for(const id in conns)if(conns[id].open)try{conns[id].send(m)}catch(e){}}else if(hostConn&&hostConn.open)try{hostConn.send(m)}catch(e){}};
+ const R={onPeers(cb){peerCb=cb;notify()},on(ev,f){(H[ev]=H[ev]||[]).push(f)},
+  presence(d){send({k:"p",id:me.id,d});return Promise.resolve()},
+  emit(ev,d){send({k:"e",ev,d});return Promise.resolve()}};
+ setInterval(()=>{const n=Date.now();for(const id in ts)if(n-ts[id]>12000)drop(id)},2000);
+ const fin=(ok,e)=>{if(done)return;done=true;ok?resolve(R):reject(e)};
+ setTimeout(()=>fin(false,{type:"timeout"}),12000);
+ const pe=host?new Peer(hid):new Peer();window.__peer=pe;
+ pe.on("error",e=>fin(false,{type:e.type==="peer-unavailable"?"nohost":e.type==="unavailable-id"?"taken":"net"}));
+ pe.on("disconnected",()=>{try{pe.reconnect()}catch(e){}});
+ if(host){
+  pe.on("open",()=>fin(true));
+  pe.on("connection",c=>{c.on("open",()=>{conns[c.peer]=c});c.on("data",m=>handle(m,c));
+   c.on("close",()=>{delete conns[c.peer];if(c.pid){drop(c.pid);send({k:"l",id:c.pid})}});
+   c.on("error",()=>{})});
+ }else{
+  pe.on("open",()=>{hostConn=pe.connect(hid,{reliable:true});
+   hostConn.on("open",()=>fin(true));hostConn.on("data",m=>handle(m,null));
+   hostConn.on("close",()=>{for(const id in pr)drop(id);feed("Kurucu ile bağlantı koptu")});
+   hostConn.on("error",()=>fin(false,{type:"net"}))});
+ }
+})}
+async function connect(code){GC=code;
+ try{await loadPeer();
+  room=await makeRoom(code,isHost);
+  room.onPeers(ch=>{const seen={};ch.peers.forEach(p=>{const q=p.presence;if(p.isMe||!q||!q.id)return;seen[q.id]=1;
+   const ky=(q.n||"?")+"|"+(q.t||"");let o=P[q.id];if(!o||o.ky!==ky){const nw=mkPeer(q.id,q.t,q.n||"?");nw.ky=ky;if(o){scene.remove(o.g);nw.g.position.copy(o.g.position)}o=P[q.id]=nw}o.s=q});for(const id in P)if(!seen[id]){scene.remove(P[id].g);delete P[id]}});
+  room.on("hit",m=>{const x=m.data;if(!x||x.to!==me.id||!alive||m.isMe||x.tm===myTeam)return;dmg(Math.min(200,+x.dmg||0),x)});
+  room.on("start",m=>{const t=m.data&&m.data.teams;if(!lob||!t||!t[me.id])return;begin(t[me.id])});
+  room.on("kill",m=>{const x=m.data;if(!x)return;feed(`${x.k} ➜ ${x.v}`);if(!m.isMe&&(x.tm==="red"||x.tm==="blue"))tk[x.tm]++;if(x.by===me.id&&!m.isMe){k++;pres(1)}});
+  room.on("sh",m=>{const x=m.data;if(m.isMe||!x||!W[x.w])return;const dd=Math.hypot(x.x-p.x,x.z-p.z);sfx(x.w,Math.pow(Math.max(0,1-dd/90),2))});
+  pres(1);clearInterval(window.hb);window.hb=setInterval(()=>pres(1),1000);
+  if(lob)$("cn").textContent=isHost?"Arkadaşların kodu girince burada görünür":"Bağlandı ✔ Kurucunun başlatması bekleniyor…";
+ }catch(e){room=null;feed("Çevrimdışı mod");if(lob)$("cn").textContent=e&&e.type=="nohost"?"Lobi bulunamadı – kod doğru mu? Kurucu lobide açık kalmalı":e&&e.type=="taken"?"Bu kod kullanımda – geri dön, yeni lobi kur":e&&e.type=="lib"?"Bağlantı kütüphanesi yüklenemedi – internetini kontrol et":"Bağlanılamadı – geri dön ve tekrar dene"}}
+function pres(f){if(!room)return;const n=performance.now();if(!f&&n-lastPres<100)return;lastPres=n;
+ room.presence({id:me.id,n:me.name,x:+p.x.toFixed(2),y:+p.y.toFixed(2),z:+p.z.toFixed(2),r:+p.yaw.toFixed(2),h:hp,k,d,w:cur,a:alive?1:0,t:myTeam}).catch(()=>{})}
+function tag(n,t){const c=document.createElement("canvas");c.width=256;c.height=64;const x=c.getContext("2d");x.font="bold 34px sans-serif";x.textAlign="center";x.fillStyle="rgba(0,0,0,.55)";x.fillRect(0,8,256,48);x.fillStyle=t=="red"?"#ff5a5a":t=="blue"?"#5aa0ff":"#fff";x.fillText(n,128,46);const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),fog:false}));s.scale.set(1.6,.4,1);s.position.y=2.35;return s}
+function mkPeer(id,team,name){const g=new THREE.Group();
+ const sk=[224,172,140],c=new THREE.Color(team==="red"?0xd62828:team==="blue"?0x2456d6:0x777777),sh=[c.r*255,c.g*255,c.b*255],hr="#46301a";
+ const lm=t=>new THREE.MeshLambertMaterial({map:t});
+ const side=tx(8,8,x=>{nz(x,8,8,sk,18);x.fillStyle=hr;x.fillRect(0,0,8,3)}),top=tx(8,8,x=>nz(x,8,8,[70,45,25],16));
+ const face=tx(8,8,x=>{nz(x,8,8,sk,12);x.fillStyle=hr;x.fillRect(0,0,8,2);x.fillStyle="#fff";x.fillRect(1,3,2,1);x.fillRect(5,3,2,1);x.fillStyle="#3a4fd0";x.fillRect(2,3,1,1);x.fillRect(5,3,1,1);x.fillStyle="#8a4a3a";x.fillRect(3,6,2,1)});
+ const head=new THREE.Mesh(new THREE.BoxGeometry(.5,.5,.5),[lm(side),lm(side),lm(top),lm(side),lm(top),lm(face)]);head.position.y=1.75;head.userData={id,head:1};
+ const body=new THREE.Mesh(new THREE.BoxGeometry(.5,.75,.25),lm(tx(8,12,x=>nz(x,8,12,sh,20))));body.position.y=1.125;
+ const armT=tx(4,12,x=>{nz(x,4,12,sh,20);x.fillStyle=`rgb(${sk})`;x.fillRect(0,8,4,4)});
+ const limb=(w,t,px,py)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,.75,w).translate(0,-.375,0),lm(t));m.position.set(px,py,0);m.userData={id};return m};
+ const aR=limb(.25,armT,.375,1.5),aL=limb(.25,armT,-.375,1.5),lt=tx(4,12,x=>nz(x,4,12,[50,60,140],16)),l1=limb(.25,lt,.125,.75),l2=limb(.25,lt,-.125,.75);
+ aR.rotation.x=Math.PI/2;aL.rotation.x=Math.PI/2.3;aL.rotation.z=.25;body.userData={id};
+ g.add(head,body,aR,aL,l1,l2,tag(name,team));g.traverse(m=>m.castShadow=true);scene.add(g);return{g,parts:[head,body,aR,aL,l1,l2],l1,l2,aR,gw:"",gm:null,w:0,s:{}}}
+const el=$("sb");function board(){el.innerHTML=`<div style="background:#e63946">${tk.red}</div><div style="background:#2f6df6">${tk.blue}</div>`;if(lob&&room)$("cn").textContent=(1+Object.keys(P).length)+" oyuncu lobide"}
+function feed(t){const f=$("feed"),e=document.createElement("div");e.textContent="💀 "+t;f.appendChild(e);setTimeout(()=>e.remove(),5000);while(f.children.length>4)f.firstChild.remove()}
+
+// ---- oyuncu
+const p={x:0,y:0,z:0,vy:0,yaw:0,pitch:0};const keys={};let joy={x:0,y:0};
+function spawn(){for(let i=0;i<40;i++){const sd=myTeam==="red"?-1:myTeam==="blue"?1:0,x=sd?sd*(20+rnd()*44):(rnd()-.5)*130,z=(rnd()-.5)*130;if(!hit(x,z)){p.x=x;p.z=z;break}}p.y=0;p.vy=0;hp=100;alive=true;if(myTeam)p.yaw=myTeam==="red"?-1.57:1.57;fillAll();hud();pres(1)}
+function dmg(a,x){hp-=a;$("fl").style.opacity=.8;setTimeout(()=>$("fl").style.opacity=0,200);hud();tn(180,90,.12,.3);
+ if(hp<=0){hp=0;alive=false;d++;setZoom(false);if(x.tm==="red"||x.tm==="blue")tk[x.tm]++;room&&room.emit("kill",{by:x.by,k:x.n,v:me.name,tm:x.tm}).catch(()=>{});feed(`${x.n} ➜ ${me.name}`);pres(1);
+  $("hp").textContent="☠ Öldün – 3 sn…";setTimeout(spawn,3000)}}
+function hud(){$("hp").textContent=(myTeam?(myTeam=="red"?"🔴 ":"🔵 "):"")+"❤ "+Math.ceil(hp);$("bar").firstChild.style.width=hp+"%";$("am").textContent=`${W[cur].n}: ${reloading?"şarjör…":ammo[cur]} / ${res[cur]}  ·  F: 🔪`}
+function reload(){const w=W[cur];if(reloading||ammo[cur]==w.mag||res[cur]<=0)return;reloading=true;hud();sfxReload(w.rl);const c=cur;
+ setTimeout(()=>{if(cur!=c||!reloading)return;const n=Math.min(w.mag-ammo[c],res[c]);ammo[c]+=n;res[c]-=n;reloading=false;hud()},w.rl)}
+const rc=new THREE.Raycaster();let tr=null;
+const enemies=()=>{const a=[];for(const id in P)if(P[id].s.a&&P[id].s.t!==myTeam)a.push(...P[id].parts);return a};
+function marker(hd){const m=$("hm");m.style.opacity=1;m.style.color=hd?"#ff0":"#f33";setTimeout(()=>m.style.opacity=0,150);sfxHit()}
+function shoot(){const w=W[cur],n=performance.now();if(!alive||reloading||kn>0||n<nextShot)return;if(ammo[cur]<=0){click(0,.4);nextShot=n+300;reload();return}
+ nextShot=n+w.rt;ammo[cur]--;const mv=Math.abs(joy.x)+Math.abs(joy.y)+(keys.w||keys.a||keys.s||keys.d?1:0)>0;
+ const spr=(zoom&&cur=="sn")?0:w.spr*(mv?1.6:1),tg=[...walls,...enemies()],dm={};let end=null,hd=false;
+ for(let i=0;i<(w.pl||1);i++){rc.setFromCamera({x:(Math.random()-.5)*spr*2,y:(Math.random()-.5)*spr*2},cam);const h=rc.intersectObjects(tg,false)[0];if(!end)end=h?h.point:rc.ray.at(100,new THREE.Vector3());
+  if(h&&h.object.userData.id){const u=h.object.userData;dm[u.id]=(dm[u.id]||0)+w.dmg*(u.head?2:1);if(u.head)hd=true}}
+ for(const id in dm){room&&room.emit("hit",{to:id,dmg:dm[id],by:me.id,n:me.name,tm:myTeam}).catch(()=>{});marker(hd)}
+ sfx(cur,1);room&&room.emit("sh",{x:+p.x.toFixed(1),z:+p.z.toFixed(1),w:cur}).catch(()=>{});
+ if(cur=="sg"||cur=="sn")setTimeout(()=>click(0,.35),380);
+ rec=1;flash.visible=true;setTimeout(()=>flash.visible=false,45);
+ if(tr)scene.remove(tr);tr=new THREE.Line(new THREE.BufferGeometry().setFromPoints([cam.localToWorld(new THREE.Vector3(.2,-.15,-1)),end]),new THREE.LineBasicMaterial({color:0xffee88}));scene.add(tr);setTimeout(()=>{if(tr){scene.remove(tr);tr=null}},50);
+ p.pitch+=w.rt>800?.06:.008;hud();if(ammo[cur]<=0)reload()}
+// bıçak: herkese otomatik verilir (F tuşu / 🔪 butonu)
+function melee(){const n=performance.now();if(!alive||n<nextKnife)return;nextKnife=n+550;kn=.001;reloading=false;vis();sfxKnife();
+ rc.setFromCamera({x:0,y:0},cam);rc.far=2.8;const h=rc.intersectObjects(enemies(),false)[0];rc.far=Infinity;
+ if(h&&h.object.userData.id){setTimeout(()=>{room&&room.emit("hit",{to:h.object.userData.id,dmg:h.object.userData.head?80:55,by:me.id,n:me.name,tm:myTeam}).catch(()=>{});marker(h.object.userData.head)},120)}}
+
+function update(dt){
+ if(alive){let f=(keys.w?1:0)-(keys.s?1:0)-joy.y,sd=(keys.d?1:0)-(keys.a?1:0)+joy.x;const l=Math.hypot(f,sd);if(l>1){f/=l;sd/=l}
+  const v=(zoom?3.5:(kn>0?7.5:8))*dt,dx=(-Math.sin(p.yaw)*f+Math.cos(p.yaw)*sd)*v,dz=(-Math.cos(p.yaw)*f-Math.sin(p.yaw)*sd)*v;
+  if(!hit(p.x+dx,p.z))p.x+=dx;if(!hit(p.x,p.z+dz))p.z+=dz;bob+=l*dt*10;
+  if(keys[" "]&&p.y==0)p.vy=7;p.vy-=22*dt;p.y=Math.max(0,p.y+p.vy*dt);if(p.y==0)p.vy=0;
+  if(firing)shoot();
+  const n=performance.now();picks.forEach(k2=>{if(!k2.on&&n-k2.at>15000){k2.on=true;k2.m.visible=true}
+   if(k2.on&&Math.hypot(k2.m.position.x-p.x,k2.m.position.z-p.z)<1.3){if(k2.t=="hp"){if(hp>=100)return;hp=Math.min(100,hp+50)}else for(const w in W)res[w]+=W[w].mag*2;
+    k2.on=false;k2.m.visible=false;k2.at=n;tn(600,1200,.12,.25);hud()}});
+  pres()}
+ if(kn>0){kn+=dt/.35;if(kn>=1){kn=0;vis()}kRoot.visible=kn>0;const t=kn*Math.PI;kRoot.rotation.set(-.3-Math.sin(t)*.9,.6-kn*1.3,0);kRoot.position.set(.2-kn*.1,-.2,-.35-Math.sin(t)*.2)}else kRoot.visible=false;
+ rec=Math.max(0,rec-dt*8);gunRoot.position.set(.22,-.2+Math.sin(bob)*.006-(reloading?.1:0),-.35+rec*.06);gunRoot.rotation.x=rec*.05-(reloading?.5:0);
+ p.pitch=Math.max(-1.4,Math.min(1.4,p.pitch));cam.position.set(p.x,p.y+1.7,p.z);cam.rotation.set(p.pitch,p.yaw,0,"YXZ");
+ sun.position.set(p.x+30,50,p.z+20);sun.target.position.set(p.x,0,p.z);
+ picks.forEach(k2=>k2.m.rotation.y+=dt*2);
+ for(const id in P){const o=P[id],s=o.s;o.g.visible=!!s.a;if(!s.a)continue;const t=Math.min(1,dt*12),sx=s.x||0,sz=s.z||0;
+  if(o.gw!==s.w){o.gw=s.w;if(o.gm)o.aR.remove(o.gm);const gg=build(W[s.w]?W[s.w].p:W.ak.p);gg.scale.setScalar(.7);gg.rotation.x=-Math.PI/2;gg.position.set(0,-.5,0);o.aR.add(gg);o.gm=gg}
+  const v=Math.hypot(sx-o.g.position.x,sz-o.g.position.z)/Math.max(dt,.001);o.w+=dt*Math.min(v,8)*1.4;const am=Math.min(.9,v*.12);o.l1.rotation.x=Math.sin(o.w)*am;o.l2.rotation.x=-Math.sin(o.w)*am;
+  o.g.position.x+=(sx-o.g.position.x)*t;o.g.position.y+=((s.y||0)-o.g.position.y)*t;o.g.position.z+=(sz-o.g.position.z)*t;o.g.rotation.y+=((s.r||0)-o.g.rotation.y)*t}}
+let last=performance.now();setInterval(board,500);
+function loop(t){requestAnimationFrame(loop);const dt=Math.min(.05,(t-last)/1000);last=t;if(playing)update(dt);else if(lob)lobbyCam(t);R.render(scene,cam)}
+function rs(){R.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener("resize",rs);rs();
+cam.position.set(0,20,30);cam.lookAt(0,0,0);addBox(150,0,18,6,.2,"conc",false);requestAnimationFrame(loop);
+
+// ---- girdi
+document.querySelectorAll("[data-w]").forEach(b=>b.addEventListener("click",()=>setW(b.dataset.w)));
+const LX=150;
+function lobbyCam(t){const l=[{id:me.id,o:selfAv}].concat(Object.keys(P).map(id=>({id,o:P[id]}))).sort((a,b)=>a.id<b.id?-1:1);
+ cam.position.set(LX,1.6,4+l.length*.9);cam.rotation.set(-.05,0,0,"YXZ");
+ l.forEach((e,i)=>{if(!e.o)return;e.o.g.visible=true;e.o.g.position.set(LX+(i-(l.length-1)/2)*1.4,.2,0);e.o.g.rotation.y=Math.PI+Math.sin(t/800+i)*.4})}
+function enterLobby(code,h){audio();me.name=($("nm").value||"Oyuncu").trim().slice(0,12);isHost=h;GC=code;$("menu").style.display="none";$("lobby").style.display="block";$("cv").textContent=code.toUpperCase();
+ selfAv=mkPeer(me.id,"",me.name);lob=true;$("sg").style.display=h?"":"none";$("cn").textContent="Bağlanılıyor…";connect(code)}
+function begin(t){if(!lob)return;lob=false;audio();myTeam=t;tk={red:0,blue:0};k=0;d=0;$("lobby").style.display="none";document.body.classList.add("pl");if(selfAv)selfAv.g.visible=false;playing=true;
+ $("st").style.borderBottom="4px solid "+(t=="red"?"#e63946":"#2f6df6");spawn();setW(cur);cam.fov=75;cam.updateProjectionMatrix();
+ if(!("ontouchstart"in window))R.domElement.requestPointerLock&&R.domElement.requestPointerLock()}
+$("mk").onclick=()=>enterLobby(Math.random().toString(36).slice(2,7).padEnd(5,"x"),true);
+$("jn").onclick=()=>{const c=clean($("gc").value);if(c.length<3){$("er").textContent="Geçerli bir grup kodu gir";return}enterLobby(c,false)};
+$("sg").onclick=()=>{const ids=[me.id,...Object.keys(P)].sort(()=>Math.random()-.5),teams={};ids.forEach((id,i)=>teams[id]=i%2?"blue":"red");
+ if(room)room.emit("start",{teams}).catch(()=>{});begin(teams[me.id])};
+const tch="ontouchstart"in window;if(tch)$("tc").style.display="block";
+addEventListener("keydown",e=>{const c=e.key.toLowerCase();keys[c==" "?" ":c]=1;if(c=="r")reload();if(c=="f"||c=="v")melee();const i=+c;if(i>=1&&i<=7)setW(ORD[i-1])});
+addEventListener("keyup",e=>{const c=e.key.toLowerCase();keys[c==" "?" ":c]=0});
+addEventListener("mousemove",e=>{if(document.pointerLockElement){p.yaw-=e.movementX*.0022*(zoom?.4:1);p.pitch-=e.movementY*.0022*(zoom?.4:1)}});
+R.domElement.addEventListener("mousedown",e=>{if(!playing)return;audio();if(!document.pointerLockElement){R.domElement.requestPointerLock();return}if(e.button==0)firing=true;if(e.button==2)setZoom(true)});
+addEventListener("mouseup",e=>{if(e.button==0)firing=false;if(e.button==2)setZoom(false)});addEventListener("contextmenu",e=>e.preventDefault());
+function hold(id,dn,up){const e=$(id);e.addEventListener("touchstart",x=>{x.preventDefault();audio();dn()},{passive:false});e.addEventListener("touchend",x=>{x.preventDefault();up&&up()},{passive:false})}
+hold("bf",()=>firing=true,()=>firing=false);hold("bj",()=>{keys[" "]=1;setTimeout(()=>keys[" "]=0,120)});hold("bz",()=>setZoom(!zoom));hold("br",reload);hold("bk",melee);
+let jid=null,lid=null,l0=null;const jl=$("jl"),jr=$("jr"),jk=$("jk"),jb=$("jb");
+function jmv(t){const r=jb.getBoundingClientRect();let x=(t.clientX-r.left-60)/50,y=(t.clientY-r.top-60)/50;const l=Math.hypot(x,y);if(l>1){x/=l;y/=l}joy.x=x;joy.y=y;jk.style.transform=`translate(${x*35}px,${y*35}px)`}
+jl.addEventListener("touchstart",e=>{e.preventDefault();jid=e.changedTouches[0].identifier;jmv(e.changedTouches[0])},{passive:false});
+jl.addEventListener("touchmove",e=>{e.preventDefault();for(const t of e.changedTouches)if(t.identifier==jid)jmv(t)},{passive:false});
+const je=e=>{for(const t of e.changedTouches)if(t.identifier==jid){jid=null;joy={x:0,y:0};jk.style.transform="none"}};jl.addEventListener("touchend",je);jl.addEventListener("touchcancel",je);
+jr.addEventListener("touchstart",e=>{const t=e.changedTouches[0];lid=t.identifier;l0=[t.clientX,t.clientY]},{passive:true});
+jr.addEventListener("touchmove",e=>{e.preventDefault();for(const t of e.changedTouches)if(t.identifier==lid){const z=zoom?.4:1;p.yaw-=(t.clientX-l0[0])*.006*z;p.pitch-=(t.clientY-l0[1])*.006*z;l0=[t.clientX,t.clientY]}},{passive:false});
+jr.addEventListener("touchend",()=>lid=null);
+// ---- davet
+const BASE=location.href.split("#")[0];
+const inviteUrl=()=>BASE+"#"+GC,inviteText=()=>"🎯 Arena 3D'de savaşalım! Grup kodu: "+GC.toUpperCase()+"\n"+inviteUrl();
+$("wa").onclick=()=>{const w=window.open("https://wa.me/?text="+encodeURIComponent(inviteText()),"_blank");if(!w)$("sh").click()};
+$("sh").onclick=async()=>{try{if(navigator.share){await navigator.share({text:inviteText()});return}}catch(e){return}
+ try{await navigator.clipboard.writeText(inviteText());$("cn").textContent="Davet linki kopyalandı ✔"}catch(e){prompt("Linki kopyala",inviteUrl())}};
+const h0=clean(location.hash.slice(1));if(h0.length>=3){$("gc").value=h0;$("er").textContent="Davet kodu girildi – takma adını yaz, 'Grup Kodu Gir'e bas"}
+</script></body></html>
