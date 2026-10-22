@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jump Dash - ULTRA TURBO! ⚡</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial Black', sans-serif;
+            background: #000;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        .game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            color: white;
+            font-size: 26px;
+            font-weight: bold;
+            text-shadow: 3px 3px 8px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+        .speed-meter {
+            background: rgba(0,0,0,0.4);
+            padding: 8px 22px;
+            border-radius: 30px;
+            backdrop-filter: blur(12px);
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .start-screen, .game-over {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.92);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 200;
+            backdrop-filter: blur(15px);
+        }
+        .btn {
+            padding: 20px 55px;
+            font-size: 26px;
+            background: linear-gradient(45deg, #feca57, #fd79a8);
+            border: none;
+            border-radius: 50px;
+            color: #000;
+            cursor: pointer;
+            box-shadow: 0 12px 35px rgba(254,202,87,0.6);
+            font-weight: bold;
+            margin: 12px;
+        }
+        .btn:active { transform: scale(0.95); }
+
+        #jumpBtn {
+            position: absolute;
+            bottom: 35px;
+            right: 30px;
+            width: 90px;
+            height: 90px;
+            background: rgba(255, 90, 90, 0.9);
+            border: 5px solid white;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(255,80,80,0.7);
+            z-index: 150;
+            color: white;
+        }
+
+        @media (max-width: 900px) {
+            .ui { font-size: 22px; top: 15px; left: 15px; right: 15px; }
+            #jumpBtn { display: flex; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="ui">
+            <div>🏃 <span id="distance">0</span>m</div>
+            <div class="speed-meter">⚡ <span id="speed">x1.0</span></div>
+            <div>🪙 <span id="coins">0</span></div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="jumpBtn">↑</div>
+
+        <!-- Başlangıç -->
+        <div class="start-screen" id="startScreen">
+            <h1 style="font-size: 52px; margin-bottom: 10px;">JUMP DASH</h1>
+            <h2 style="font-size: 34px; color:#feca57; margin-bottom: 40px;">ULTRA TURBO ⚡</h2>
+            <p style="font-size: 23px; margin-bottom: 40px; text-align:center; max-width: 420px;">
+                SPACE tuşu veya DOKUN = Zıpla!
+            </p>
+            <button class="btn" onclick="startGame()">🚀 BAŞLA</button>
+        </div>
+
+        <!-- Oyun Bitti -->
+        <div class="game-over" id="gameOverScreen" style="display: none;">
+            <h1>💥 ULTRA CRASH!</h1>
+            <div style="font-size: 42px; margin: 20px 0;">
+                <span id="finalDistance">0</span>m - <span id="finalCoins">0</span>🪙
+            </div>
+            <div id="medal" style="font-size: 75px; margin: 10px 0;">🥉</div>
+            <div style="font-size: 24px; margin: 15px 0;">
+                EN İYİ: <span id="highScore">0</span>m
+            </div>
+            <div style="display: flex; gap: 15px; margin-top: 20px;">
+                <button class="btn" onclick="restartGame()">🔄 TEKRAR DENE</button>
+                <button class="btn" style="background: linear-gradient(45deg, #00b894, #00cec9);" onclick="shareScore()">📤 PAYLAŞ</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let gameState = 'start';
+        let distance = 0, coins = 0, highScore = parseFloat(localStorage.getItem('jumpDashHS')) || 0;
+        let gameTime = 0, worldSpeed = 8, speedMultiplier = 1.0;
+        let groundY = 0;
+
+        const player = {
+            x: 160,
+            y: 400,
+            vy: 0,
+            radius: 32,
+            grounded: false,
+            jumpPower: -23.5,
+            gravity: 1.18,
+            trail: []
+        };
+
+        let obstacles = [], coinItems = [], speedBoosts = [], clouds = [], particles = [];
+        let lastObstacleTime = 0;
+
+        // DOM Elements
+        const distanceEl = document.getElementById('distance');
+        const speedEl = document.getElementById('speed');
+        const coinsEl = document.getElementById('coins');
+        const finalDistanceEl = document.getElementById('finalDistance');
+        const finalCoinsEl = document.getElementById('finalCoins');
+        const highScoreEl = document.getElementById('highScore');
+        const medalEl = document.getElementById('medal');
+        const jumpBtn = document.getElementById('jumpBtn');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            groundY = canvas.height * 0.72;
+            player.x = canvas.width * 0.18;
+        }
+
+        // Ses Efektleri
+        function playJumpSound() {
+            try {
+                const audio = new AudioContext();
+                const osc = audio.createOscillator();
+                const gain = audio.createGain();
+                osc.connect(gain); gain.connect(audio.destination);
+                osc.frequency.setValueAtTime(680, audio.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(320, audio.currentTime + 0.13);
+                gain.gain.setValueAtTime(0.35, audio.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.16);
+                osc.start(); osc.stop(audio.currentTime + 0.16);
+            } catch(e) {}
+        }
+
+        function playCoinSound() {
+            try {
+                const audio = new AudioContext();
+                const osc = audio.createOscillator();
+                const gain = audio.createGain();
+                osc.connect(gain); gain.connect(audio.destination);
+                osc.frequency.setValueAtTime(1200, audio.currentTime);
+                osc.frequency.setValueAtTime(1600, audio.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.25, audio.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.2);
+                osc.start(); osc.stop(audio.currentTime + 0.2);
+            } catch(e) {}
+        }
+
+        function playBoostSound() {
+            try {
+                const audio = new AudioContext();
+                const osc = audio.createOscillator();
+                const gain = audio.createGain();
+                osc.connect(gain); gain.connect(audio.destination);
+                osc.frequency.setValueAtTime(300, audio.currentTime);
+                osc.frequency.linearRampToValueAtTime(900, audio.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.3, audio.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audio.currentTime + 0.4);
+                osc.start(); osc.stop(audio.currentTime + 0.4);
+            } catch(e) {}
+        }
+
+        function playCrashSound() {
+            try {
+                const audio = new AudioContext();
+                const osc = audio.createOscillator();
+                const gain = audio.createGain();
+                osc.connect(gain); gain.connect(audio.destination);
+                osc.frequency.setValueAtTime(450, audio.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(80, audio.currentTime + 0.6);
+                gain.gain.setValueAtTime(0.4, audio.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.6);
+                osc.start(); osc.stop(audio.currentTime + 0.6);
+            } catch(e) {}
+        }
+
+        // Kontroller
+        let jumpPressed = false;
+
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space' && gameState === 'playing' && player.grounded) {
+                e.preventDefault();
+                jump();
+            }
+        });
+
+        canvas.addEventListener('touchstart', e => {
+            if (gameState === 'playing' && player.grounded) {
+                e.preventDefault();
+                jump();
+            }
+        }, { passive: false });
+
+        jumpBtn.addEventListener('touchstart', e => {
+            e.preventDefault();
+            if (gameState === 'playing' && player.grounded) jump();
+        });
+
+        function jump() {
+            player.vy = player.jumpPower;
+            player.grounded = false;
+            playJumpSound();
+            createParticles(player.x, player.y + 25, '#feca57', 14);
+        }
+
+        function createParticles(x, y, color, count = 15) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 11,
+                    vy: (Math.random() - 0.5) * 12 - 5,
+                    life: 36,
+                    color: color,
+                    size: Math.random() * 5 + 3
+                });
+            }
+        }
+
+        function spawnObstacle() {
+            const heights = [62, 82, 55, 78];
+            const h = heights[Math.floor(Math.random() * heights.length)];
+            obstacles.push({
+                x: canvas.width + 50,
+                y: groundY - h,
+                width: 48 + Math.random() * 22,
+                height: h
+            });
+        }
+
+        function spawnCoin() {
+            coinItems.push({
+                x: canvas.width + 60,
+                y: groundY - 130 - Math.random() * 170,
+                radius: 19
+            });
+        }
+
+        function spawnSpeedBoost() {
+            speedBoosts.push({
+                x: canvas.width + 60,
+                y: groundY - 85,
+                width: 32,
+                height: 32
+            });
+        }
+
+        function spawnCloud() {
+            clouds.push({
+                x: canvas.width + 60,
+                y: 80 + Math.random() * 160,
+                size: 50 + Math.random() * 50,
+                speed: 1.8 + Math.random() * 1.2
+            });
+        }
+
+        function startGame() {
+            gameState = 'playing';
+            resetGame();
+            document.getElementById('startScreen').style.display = 'none';
+            gameLoop();
+        }
+
+        function resetGame() {
+            distance = 0; coins = 0; gameTime = 0;
+            worldSpeed = 8; speedMultiplier = 1;
+            obstacles = []; coinItems = []; speedBoosts = []; clouds = []; particles = [];
+            player.y = groundY - player.radius - 20;
+            player.vy = 0;
+            player.grounded = true;
+            lastObstacleTime = 0;
+        }
+
+        function gameOver() {
+            gameState = 'gameover';
+            playCrashSound();
+            if (distance > highScore) {
+                highScore = distance;
+                localStorage.setItem('jumpDashHS', highScore);
+            }
+            finalDistanceEl.textContent = Math.floor(distance);
+            finalCoinsEl.textContent = coins;
+            highScoreEl.textContent = Math.floor(highScore);
+
+            if (distance > highScore * 0.85) medalEl.textContent = '🏆';
+            else if (distance > highScore * 0.6) medalEl.textContent = '🥇';
+            else if (distance > highScore * 0.35) medalEl.textContent = '🥈';
+            else medalEl.textContent = '🥉';
+
+            document.getElementById('gameOverScreen').style.display = 'flex';
+        }
+
+        function update() {
+            gameTime += 1/60;
+
+            // Fizik
+            player.vy += player.gravity;
+            player.y += player.vy;
+
+            if (player.y >= groundY - player.radius) {
+                player.y = groundY - player.radius;
+                player.vy = 0;
+                player.grounded = true;
+            }
+
+            // Trail
+            player.trail.push({x: player.x, y: player.y});
+            if (player.trail.length > 13) player.trail.shift();
+
+            // Hız artışı
+            speedMultiplier = Math.min(1 + Math.floor(gameTime / 4) * 0.16, 3.9);
+            worldSpeed = 8.6 * speedMultiplier;
+            distance += worldSpeed * 0.135;
+
+            distanceEl.textContent = Math.floor(distance);
+            speedEl.textContent = `x${speedMultiplier.toFixed(1)}`;
+
+            // Spawn
+            if (obstacles.length < 2 && gameTime - lastObstacleTime > 1.4) {
+                spawnObstacle();
+                lastObstacleTime = gameTime;
+            }
+            if (Math.random() < 0.035) spawnCoin();
+            if (Math.random() < 0.008) spawnSpeedBoost();
+            if (Math.random() < 0.012) spawnCloud();
+
+            // Update Objects
+            obstacles.forEach((o, i) => {
+                o.x -= worldSpeed;
+                if (o.x + o.width < 0) obstacles.splice(i, 1);
+            });
+
+            coinItems.forEach((c, i) => {
+                c.x -= worldSpeed;
+                if (c.x + c.radius < 0) coinItems.splice(i, 1);
+            });
+
+            speedBoosts.forEach((b, i) => {
+                b.x -= worldSpeed;
+                if (b.x + b.width < 0) speedBoosts.splice(i, 1);
+            });
+
+            clouds.forEach((c, i) => {
+                c.x -= c.speed;
+                if (c.x + c.size < 0) clouds.splice(i, 1);
+            });
+
+            // Particles
+            particles = particles.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.35;
+                p.life--;
+                return p.life > 0;
+            });
+
+            checkCollisions();
+        }
+
+        function checkCollisions() {
+            // Obstacle Collision
+            for (let obs of obstacles) {
+                if (player.x + player.radius > obs.x &&
+                    player.x - player.radius < obs.x + obs.width &&
+                    player.y + player.radius > obs.y) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            // Coin Collision
+            for (let i = coinItems.length - 1; i >= 0; i--) {
+                let c = coinItems[i];
+                const dx = player.x - c.x;
+                const dy = player.y - c.y;
+                if (dx*dx + dy*dy < (player.radius + c.radius) ** 2) {
+                    coins++;
+                    coinsEl.textContent = coins;
+                    playCoinSound();
+                    createParticles(c.x, c.y, '#ffd700', 18);
+                    coinItems.splice(i, 1);
+                }
+            }
+
+            // Speed Boost
+            for (let i = speedBoosts.length - 1; i >= 0; i--) {
+                let b = speedBoosts[i];
+                if (player.x + player.radius > b.x && player.x - player.radius < b.x + b.width &&
+                    player.y + player.radius > b.y && player.y - player.radius < b.y + b.height) {
+                    speedMultiplier += 0.6;
+                    playBoostSound();
+                    createParticles(b.x + 16, b.y + 16, '#00ffcc', 25);
+                    speedBoosts.splice(i, 1);
+                }
+            }
+        }
+
+        function draw() {
+            // Background
+            const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, '#ff6b6b');
+            grad.addColorStop(0.4, '#ee5a52');
+            grad.addColorStop(0.75, '#fdcb6e');
+            grad.addColorStop(1, '#f39c12');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Clouds
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            clouds.forEach(c => {
+                ctx.save();
+                ctx.translate(c.x, c.y);
+                ctx.beginPath();
+                ctx.arc(0, 0, c.size, 0, Math.PI*2);
+                ctx.arc(c.size*0.6, 0, c.size*0.65, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // Ground
+            ctx.fillStyle = '#2d3436';
+            ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+
+            ctx.strokeStyle = '#636e72';
+            ctx.lineWidth = 6;
+            ctx.setLineDash([35, 35]);
+            ctx.lineDashOffset = -distance * 6 % 70;
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(canvas.width, groundY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Obstacles
+            ctx.shadowBlur = 20;
+            obstacles.forEach(obs => {
+                ctx.shadowColor = '#2d3436';
+                ctx.fillStyle = '#2d3436';
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            });
+            ctx.shadowBlur = 0;
+
+            // Coins
+            coinItems.forEach(coin => {
+                ctx.save();
+                ctx.translate(coin.x, coin.y);
+                ctx.rotate(gameTime * 8);
+                ctx.shadowColor = '#ffd700';
+                ctx.shadowBlur = 25;
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
+                ctx.arc(0, 0, coin.radius, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#ffed4a';
+                ctx.beginPath();
+                ctx.arc(-6, -6, 7, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // Speed Boosts
+            speedBoosts.forEach(b => {
+                ctx.save();
+                ctx.translate(b.x + b.width/2, b.y + b.height/2);
+                const pulse = Math.sin(gameTime * 10) * 0.15 + 1;
+                ctx.scale(pulse, pulse);
+                ctx.shadowColor = '#00ffcc';
+                ctx.shadowBlur = 30;
+                ctx.fillStyle = '#00ffcc';
+                ctx.fillRect(-b.width/2, -b.height/2, b.width, b.height);
+                ctx.restore();
+            });
+
+            // Particles
+            particles.forEach(p => {
+                ctx.globalAlpha = p.life / 36;
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 12;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            // Player Trail
+            player.trail.forEach((t, i) => {
+                ctx.globalAlpha = (i / player.trail.length) * 0.55;
+                ctx.fillStyle = speedMultiplier > 2.5 ? '#feca57' : '#e17055';
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, player.radius * 0.45, 0, Math.PI*2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            // Player
+            ctx.save();
+            ctx.translate(player.x, player.y);
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.beginPath();
+            ctx.ellipse(0, 18, player.radius * 0.9, 9, 0, 0, Math.PI*2);
+            ctx.fill();
+
+            ctx.shadowColor = speedMultiplier > 2.5 ? '#feca57' : '#e17055';
+            ctx.shadowBlur = 35;
+            ctx.fillStyle = speedMultiplier > 2.5 ? '#feca57' : '#e17055';
+            ctx.beginPath();
+            ctx.roundRect(-player.radius + 4, -player.radius + 10, player.radius * 2 - 8, player.radius * 2 - 8, 16);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = 'white';
+            ctx.beginPath(); ctx.arc(-11, -12, 9, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(11, -12, 9, 0, Math.PI*2); ctx.fill();
+
+            ctx.fillStyle = '#2d3436';
+            ctx.beginPath(); ctx.arc(-10, -11, 5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(12, -11, 5, 0, Math.PI*2); ctx.fill();
+
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            if (gameState === 'playing') {
+                update();
+                draw();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.startGame = startGame;
+        window.restartGame = () => {
+            document.getElementById('gameOverScreen').style.display = 'none';
+            resetGame();
+            gameState = 'playing';
+        };
+
+        window.shareScore = () => {
+            const text = `🚀 Jump Dash Ultra Turbo!\n${Math.floor(distance)}m ile rekor kırdım! (${coins}🪙)\nSen de dene!`;
+            if (navigator.share) navigator.share({title: 'Jump Dash', text: text});
+            else alert(text);
+        };
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        highScoreEl.textContent = Math.floor(highScore);
+        gameLoop(); // Arka planda dönsün
+    </script>
+</body>
+</html>
