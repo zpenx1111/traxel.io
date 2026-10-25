@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bravo Games</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #0f172a;
+  color: white;
+}
+
+/* NAVBAR */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 30px;
+  background: #020617;
+}
+
+.logo {
+  font-size: 22px;
+  color: #38bdf8;
+  font-weight: bold;
+}
+
+.search {
+  padding: 8px;
+  border-radius: 10px;
+  border: none;
+}
+
+/* GRID */
+.container {
+  padding: 20px;
+}
+
+.games {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+}
+
+/* CARD */
+.card {
+  background: #1e293b;
+  border-radius: 15px;
+  overflow: hidden;
+  transition: 0.3s;
+  cursor: pointer;
+}
+
+.card:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 20px #38bdf8;
+}
+
+.card img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+}
+
+.card h3 {
+  padding: 10px;
+}
+
+/* GAME SCREEN */
+#gameScreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: black;
+  display: none;
+  flex-direction: column;
+}
+
+#gameScreen iframe {
+  flex: 1;
+  border: none;
+}
+
+.closeBtn {
+  background: red;
+  color: white;
+  padding: 10px;
+  border: none;
+  cursor: pointer;
+}
+
+/* FOOTER */
+.footer {
+  text-align: center;
+  padding: 20px;
+  color: gray;
+}
+</style>
+</head>
+
+<body>
+
+<div class="navbar">
+  <div class="logo">🎮 BRAVO</div>
+  <input id="searchInput" class="search" placeholder="Oyun ara...">
+</div>
+
+<div class="container">
+  <h2>Oyunlar</h2>
+  <div id="gameList" class="games"></div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="gameScreen">
+  <button class="closeBtn" onclick="closeGame()">Kapat</button>
+  <iframe id="gameFrame"></iframe>
+</div>
+
+<div class="footer">© 2026 Bravo Games</div>
+
+<script>
+const games = [
+ 
+  {
+    "name": "⚡ Jump Dash",
+    "img": "https://i.ibb.co/mrwnMJXq/jump-dash-in-kapak-fotografi.jpg",
+    "url": "oyunlar/jumpdashrealpromax.html"
+  },
+  {
+  "name": "Bravo JUMP2",
+  "img": "https://i.ibb.co/Zp1Zv3L3/bravojump2.png",
+  "url": "oyunlar/bravojump2.html",
+  "desc": "Engelleri aşarak ilerle!"
+  }, 
+  {
+  "name": "🎯 Traxel",
+  "img": "https://i.ibb.co/jkp06n9X/file-000000007b38820a8ca1a864b1f81ac9.png",
+  "url": "oyunlar/traxel.io.html",
+  "desc": "Arkadaşlarınla grup kur, takımlarını oluştur ve 3D çevrimiçi savaş arenasında mücadele et!"
+  }
+ ];
+
+const gameList = document.getElementById("gameList");
+const searchInput = document.getElementById("searchInput");
+
+function renderGames(filter="") {
+  gameList.innerHTML = "";
+  games
+    .filter(g => g.name.toLowerCase().includes(filter.toLowerCase()))
+    .forEach(game => {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <img src="${game.img}">
+        <h3>${game.name}</h3>
+      `;
+      card.onclick = () => openGame(game.url);
+      gameList.appendChild(card);
+    });
+}
+
+function openGame(url) {
+  document.getElementById("gameFrame").src = url;
+  document.getElementById("gameScreen").style.display = "flex";
+}
+
+function closeGame() {
+  document.getElementById("gameScreen").style.display = "none";
+  document.getElementById("gameFrame").src = "";
+}
+
+searchInput.addEventListener("input", (e) => {
+  renderGames(e.target.value);
+});
+
+renderGames();
+</script>
+
+</body>
+</html>
